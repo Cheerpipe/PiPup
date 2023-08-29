@@ -8,6 +8,8 @@ data class PopupProps(
     val position: Position = DEFAULT_POSITION,
     val backgroundColor: String = DEFAULT_BACKGROUND_COLOR,
     val title: String? = null,
+    val popupId: String? = "default-popup",
+    val noExpire: Boolean? = false,
     val titleSize: Float = 14f,
     val titleColor: String = DEFAULT_TITLE_COLOR,
     val message: String? = null,

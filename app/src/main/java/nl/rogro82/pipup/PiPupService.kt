@@ -107,9 +107,26 @@ class PiPupService : Service(), WebServer.Handler {
 
             Log.d(LOG_TAG, "Create popup: $popup")
 
-            // remove current popup
+            // Check the popup is a new one
 
-            removePopup()
+            if (mPopup?.popup?.popupId != popup.popupId)
+            {
+                // remove current popup
+                removePopup()
+            }
+            else
+            {
+                // Remove current remove future calls
+                mHandler.removeCallbacksAndMessages(null)
+
+                // Create a new future remove call only if popup expires
+                if (popup.noExpire==false) {
+                    mHandler.postDelayed({
+                        removePopup(true)
+                    }, (popup.duration * 1000).toLong())
+                }
+                return;
+            }
 
             // create or reuse the current overlay
 
@@ -160,9 +177,11 @@ class PiPupService : Service(), WebServer.Handler {
 
             // schedule removal
 
-            mHandler.postDelayed({
-                removePopup(true)
-            }, (popup.duration * 1000).toLong())
+            if (popup.noExpire==false) {
+                mHandler.postDelayed({
+                    removePopup(true)
+                }, (popup.duration * 1000).toLong())
+            }
 
         } catch (ex: Throwable) {
             ex.printStackTrace()
@@ -172,8 +191,15 @@ class PiPupService : Service(), WebServer.Handler {
     override fun handleHttpRequest(session: NanoHTTPD.IHTTPSession?): NanoHTTPD.Response {
         return session?.let {
             when(session.method) {
+                NanoHTTPD.Method.GET -> {
+                    when(session.uri) {
+                        "/status" -> {
+                            OK((mPopup != null).toString())
+                        }
+                        else -> InvalidRequest("unknown uri: ${session.uri}")
+                    }
+                }
                 NanoHTTPD.Method.POST -> {
-
                     when(session.uri) {
                         "/cancel" -> {
                             mHandler.post {
@@ -217,6 +243,10 @@ class PiPupService : Service(), WebServer.Handler {
 
                                         val title = params["title"]
 
+                                        val popupId = params["popupId"]
+
+                                        val noExpire = params["noExpire"]?.toBoolean()
+
                                         val titleSize = params["titleSize"]?.toFloatOrNull()
                                             ?: PopupProps.DEFAULT_TITLE_SIZE
 
@@ -248,6 +278,8 @@ class PiPupService : Service(), WebServer.Handler {
                                             position = position,
                                             backgroundColor =  backgroundColor,
                                             title = title,
+                                            popupId = popupId,
+                                            noExpire = noExpire,
                                             titleSize = titleSize,
                                             titleColor = titleColor,
                                             message = message,
